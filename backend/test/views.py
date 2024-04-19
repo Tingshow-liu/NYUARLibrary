@@ -3,12 +3,15 @@ from django.shortcuts import render
 from django.db.utils import IntegrityError
 from django.db.models import Q
 from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login, logout
+from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from . import models
 from .utils.fcns import *
 import datetime
 import random
+import logging
 
 # Create your views here.
 
@@ -61,24 +64,27 @@ def create_room(request):
 
     return Response()
 
+
 @api_view(['POST'])
 def register_student(request):
-    """
-    Requires studentId, email, phone, password in request body
-    """
     body_unicode = request.body.decode('utf-8')
     body = json.loads(body_unicode)
-    content = body['content']
-    print(f'{content=}')
 
+    # Check if the student already exists
+    student_id = body["studentId"]
+    if models.Student.objects.filter(studentId=student_id).exists():
+        return Response({'error': 'A student with this ID already exists.'}, status=400)
+
+    # If not, create a new student
     models.Student.objects.create(
-        studentId=content["studentId"],
-        email=content["email"],
-        phone=content["phone"],
-        password=content["password"]
+        studentId=body["studentId"],
+        email=body["email"],
+        phone=body["phone"],
+        password=body["password"]
     )
 
-    return Response()
+    return Response({'message': 'Student registered successfully'}, status=201)
+
 
 @api_view(['POST'])
 def login_student(request):
@@ -101,11 +107,13 @@ def login_student(request):
     request.session['studentId'] = student.studentId
     return Response()
 
+
 @api_view(['POST'])
 def logout_student(request):
     if 'studentId' in request.session:
         del request.session['studentId']
     return Response()
+
 
 @api_view(['POST'])
 def create_reservation(request):
