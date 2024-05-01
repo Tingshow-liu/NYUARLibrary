@@ -88,24 +88,24 @@ def register_student(request):
 
 @api_view(['POST'])
 def login_student(request):
-    """
-    Requires studentId, password in request body
-    """
     body_unicode = request.body.decode('utf-8')
     body = json.loads(body_unicode)
-    content = body['content']
-    print(f'{content=}')
+    student_id = body['studentId']
+    password = body['password']
 
     try:
-        student = models.Student.objects.get(pk=content['studentId'])
-        if not authenticate(student, password=content['password']):
-            raise ValueError("Incorrect password")
-    except models.Student.DoesNotExist as ex:
-        raise ex
+        # Retrieve the student directly by their studentId
+        student = models.Student.objects.get(studentId=student_id)
+        
+        # Compare the plain text passwords
+        if student.password == password:
+            request.session['studentId'] = student.studentId
+            return Response({'message': 'Login successful'})
+        else:
+            return Response({'error': 'Incorrect password'}, status=401)
 
-    # Set session with studentId
-    request.session['studentId'] = student.studentId
-    return Response()
+    except models.Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=404)
 
 
 @api_view(['POST'])
